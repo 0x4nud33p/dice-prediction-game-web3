@@ -1,4 +1,4 @@
-# 🎲 Dice Prediction Game Web3
+# 🎲 Dice Prediction Game Web3 [Demo-video](https://youtu.be/ERyMr_NOa2U?si=yzu7I0ECaHbHGOuO)
 
 A decentralized dice prediction game built on Ethereum blockchain, combining the excitement of probability-based gaming with Web3 technology. Players can predict dice outcomes and win rewards based on their predictions.
 
