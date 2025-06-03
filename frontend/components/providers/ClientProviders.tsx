@@ -12,7 +12,7 @@ const queryClient = new QueryClient();
 const ClientProviders = ({ children }: { children: ReactNode }) => {
   return (
     <PrivyProvider
-      appId="clpispdty00ycl80fpueukbhl"
+      appId={`${process.env.NEXT_PUBLIC_PRIVY_APP_ID}`}
       config={{
         appearance: { theme: "dark", accentColor: "#676FFF" },
         embeddedWallets: { createOnLogin: "users-without-wallets" },
@@ -23,7 +23,9 @@ const ClientProviders = ({ children }: { children: ReactNode }) => {
           nativeCurrency: { decimals: 18, name: "Ethereum", symbol: "ETH" },
           rpcUrls: {
             default: {
-              http: ["https://sepolia.infura.io/v3/YOUR_INFURA_KEY"], // 🔁 Replace this
+              http: [
+                `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY}`,
+              ],
             },
           },
           blockExplorers: {

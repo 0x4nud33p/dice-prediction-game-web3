@@ -56,7 +56,6 @@ const Index = () => {
   const [maxBet, setMaxBet] = useState<string>('1');
   const [withdrawAmount, setWithdrawAmount] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('play');
-  const [isOwner, setIsOwner] = useState<boolean>(false);
 
   // Initialize contract when wallet is connected
   useEffect(() => {
@@ -76,9 +75,6 @@ const Index = () => {
       const diceContract = new ethers.Contract(DICE_GAME_ADDRESS, DICE_GAME_ABI, signer);
       setContract(diceContract);
       
-      // Check if connected wallet is owner
-      const ownerAddress = await diceContract.owner();
-      setIsOwner(ownerAddress.toLowerCase() === wallet.address.toLowerCase());
     } catch (error) {
       console.error('Failed to initialize contract:', error);
       toast({
@@ -144,7 +140,7 @@ const Index = () => {
   };
 
   const updateSettings = async () => {
-    if (!contract || !isOwner) return;
+    if (!contract) return;
     
     try {
       // Update house edge
@@ -171,7 +167,7 @@ const Index = () => {
   };
 
   const fundContract = async () => {
-    if (!contract || !isOwner) return;
+    if (!contract) return;
     
     try {
       const tx = await contract.fundContract({
@@ -196,7 +192,7 @@ const Index = () => {
   };
 
   const withdrawFunds = async () => {
-    if (!contract || !isOwner || !withdrawAmount) return;
+    if (!contract || !withdrawAmount) return;
     
     try {
       const amountWei = ethers.parseEther(withdrawAmount);
@@ -221,7 +217,7 @@ const Index = () => {
   };
 
   const emergencyWithdraw = async () => {
-    if (!contract || !isOwner) return;
+    if (!contract) return;
     
     try {
       const tx = await contract.emergencyWithdraw();
@@ -404,11 +400,6 @@ const Index = () => {
             <TabsTrigger value="stats" className="flex items-center gap-2">
               <BarChart className="w-4 h-4" /> Stats
             </TabsTrigger>
-            {isOwner && (
-              <TabsTrigger value="settings" className="flex items-center gap-2">
-                <Settings className="w-4 h-4" /> Settings
-              </TabsTrigger>
-            )}
           </TabsList>
 
           {/* Play Tab */}
@@ -600,111 +591,6 @@ const Index = () => {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* Settings Tab (Owner Only) */}
-          {isOwner && (
-            <TabsContent value="settings">
-              <Card className="bg-white/10 backdrop-blur-lg border-white/20 mt-6">
-                <CardHeader>
-                  <CardTitle className="text-xl text-white text-center">
-                    Contract Settings (Owner Only)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-white font-medium">House Edge</h3>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="range"
-                        min="0"
-                        max="1000"
-                        value={houseEdge}
-                        onChange={(e) => setHouseEdge(Number(e.target.value))}
-                        className="w-full"
-                      />
-                      <span className="text-white w-24">
-                        {(houseEdge / 100).toFixed(2)}%
-                      </span>
-                    </div>
-                    <p className="text-gray-400 text-sm">
-                      House edge percentage (in basis points). Max 10%
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="text-white font-medium mb-2">Minimum Bet (ETH)</h3>
-                      <input
-                        type="number"
-                        step="0.001"
-                        min="0.001"
-                        value={minBet}
-                        onChange={(e) => setMinBet(e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
-                      />
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-white font-medium mb-2">Maximum Bet (ETH)</h3>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0.1"
-                        value={maxBet}
-                        onChange={(e) => setMaxBet(e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
-                      />
-                    </div>
-                  </div>
-                  
-                  <Button
-                    onClick={updateSettings}
-                    className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white py-4"
-                  >
-                    Update Settings
-                  </Button>
-                  
-                  <div className="border-t border-white/10 pt-6">
-                    <h3 className="text-white font-medium mb-4">Contract Funds</h3>
-                    
-                    <div className="flex gap-4 mb-6">
-                      <Button
-                        onClick={fundContract}
-                        className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white flex-1"
-                      >
-                        Fund Contract
-                      </Button>
-                      
-                      <Button
-                        onClick={emergencyWithdraw}
-                        className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white flex-1"
-                      >
-                        Emergency Withdraw
-                      </Button>
-                    </div>
-                    
-                    <div className="flex gap-4">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.001"
-                        value={withdrawAmount}
-                        onChange={(e) => setWithdrawAmount(e.target.value)}
-                        placeholder="Amount to withdraw"
-                        className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
-                      />
-                      <Button
-                        onClick={withdrawFunds}
-                        className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
-                      >
-                        Withdraw Funds
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
         </Tabs>
       </div>
     </div>
