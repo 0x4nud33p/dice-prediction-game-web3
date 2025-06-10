@@ -53,7 +53,8 @@ const LoadingAnimation = () => {
         {/* Text */}
         <div className="loading-text">
           <div className="loading-title">QUANTUM DICE</div>
-          <div className="loading-subtitle">Initializing Web3 Protocol</div>
+          {/* <div className="loading-subtitle">Initializing Web3 Protocol</div> */}
+          <div className="loading-subtitle">If Waiting Period is too long Refresh the Page</div>
           <div className="loading-dots">
             <span></span>
             <span></span>

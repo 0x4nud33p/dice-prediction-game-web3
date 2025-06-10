@@ -49,7 +49,8 @@ const Index = () => {
   const [walletBalance, setWalletBalance] = useState<string>('0');
   const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [isSepolia, setIsSepolia] = useState(false);
-  
+  const [customBetAmount, setCustomBetAmount] = useState<number>(0.001);
+
   // New state management
   const [playerHistory, setPlayerHistory] = useState<Game[]>([]);
   const [contractStats, setContractStats] = useState<ContractStats | null>(null);
@@ -163,8 +164,18 @@ const Index = () => {
     setIsPlaying(true);
 
     try {
+      if(customBetAmount <= 0 || customBetAmount < parseFloat(minBet) || customBetAmount > parseFloat(maxBet)) {
+        toast({
+          title: "Invalid Bet Amount",
+          description: `Please enter a bet amount between ${minBet} and ${maxBet}`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const betAmount = ethers.parseEther(customBetAmount.toString());
       const tx = await contract.playGame(selectedNumber, {
-        value: ethers.parseEther(BET_AMOUNT)
+        value: betAmount,
       });
 
       toast({
