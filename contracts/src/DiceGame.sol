@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
-import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@chainlink/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/v0.8/vrf/VRFConsumerBaseV2.sol";
 
-contract DiceGame is ReentrancyGuard, Ownable {
+contract DiceGame is VRFConsumerBaseV2, ReentrancyGuard, Ownable {
     struct Game {
         address player;
         uint256 betAmount;
@@ -17,11 +19,20 @@ contract DiceGame is ReentrancyGuard, Ownable {
 
     mapping(uint256 => Game) public games;
     mapping(address => uint256[]) public playerGames;
+    mapping(uint256 => uint256) public vrfRequestIdToGameId; // Maps VRF request ID to game ID
 
     uint256 public gameCounter;
     uint256 public houseEdge = 150; // 1.5% (150/10000)
     uint256 public minBet = 0.001 ether;
     uint256 public maxBet = 1 ether;
+
+    // Chainlink VRF Variables
+    VRFCoordinatorV2Interface COORDINATOR;
+    uint64 subscriptionId;
+    bytes32 keyHash;
+    uint16 requestConfirmations = 3;
+    uint32 callbackGasLimit = 100000;
+    uint32 numWords = 1;
 
     event GameCreated(
         uint256 indexed gameId,
@@ -38,9 +49,18 @@ contract DiceGame is ReentrancyGuard, Ownable {
     );
     event HouseEdgeUpdated(uint256 newHouseEdge);
     event BetLimitsUpdated(uint256 newMinBet, uint256 newMaxBet);
-    event contractBalanceUpdated(uint256 newBalance);
+    event ContractBalanceUpdated(uint256 newBalance);
+    event RandomnessRequested(uint256 indexed gameId, uint256 requestId);
 
-    constructor() Ownable(msg.sender) {}
+    constructor(
+        uint64 _subscriptionId,
+        address _vrfCoordinator,
+        bytes32 _keyHash
+    ) VRFConsumerBaseV2(_vrfCoordinator) Ownable(msg.sender) {
+        COORDINATOR = VRFCoordinatorV2Interface(_vrfCoordinator);
+        subscriptionId = _subscriptionId;
+        keyHash = _keyHash;
+    }
 
     modifier validBet() {
         require(
@@ -66,9 +86,11 @@ contract DiceGame is ReentrancyGuard, Ownable {
             address(this).balance >= msg.value * 5,
             "Insufficient contract balance for potential payout"
         );
+        require(msg.value >= minBet, "Bet amount below minimum");
+        require(msg.value <= maxBet, "Bet amount above maximum");
 
         uint256 gameId = gameCounter++;
-
+        
         games[gameId] = Game({
             player: msg.sender,
             betAmount: msg.value,
@@ -80,42 +102,48 @@ contract DiceGame is ReentrancyGuard, Ownable {
         });
 
         playerGames[msg.sender].push(gameId);
-
         emit GameCreated(gameId, msg.sender, msg.value, _prediction);
 
-        // Will be upgraded to Chainlink VRF for secure randomness for further versions
-        // For now, using block properties for simplicity
-        uint8 diceResult = uint8(
-            (uint256(
-                keccak256(
-                    abi.encodePacked(
-                        block.timestamp,
-                        block.prevrandao,
-                        msg.sender,
-                        gameId
-                    )
-                )
-            ) % 6) + 1
+        // Request randomness from Chainlink VRF
+        uint256 requestId = COORDINATOR.requestRandomWords(
+            keyHash,
+            subscriptionId,
+            requestConfirmations,
+            callbackGasLimit,
+            numWords
         );
 
-        games[gameId].result = diceResult;
-        games[gameId].isComplete = true;
+        vrfRequestIdToGameId[requestId] = gameId;
+        emit RandomnessRequested(gameId, requestId);
+    }
 
-        bool won = (diceResult == _prediction);
-        games[gameId].won = won;
+    // Callback function called by VRF Coordinator
+    function fulfillRandomWords(
+        uint256 requestId,
+        uint256[] memory randomWords
+    ) internal override nonReentrant {
+        uint256 gameId = vrfRequestIdToGameId[requestId];
+        Game storage game = games[gameId];
+        require(!game.isComplete, "Game already completed");
+
+        // Generate dice result (1-6) from random number
+        uint8 diceResult = uint8((randomWords[0] % 6) + 1);
+        game.result = diceResult;
+        game.isComplete = true;
+
+        bool won = (diceResult == game.prediction);
+        game.won = won;
 
         uint256 payout = 0;
         if (won) {
-            // 5x multiplier minus house edge
-            uint256 grossPayout = msg.value * 5;
+            uint256 grossPayout = game.betAmount * 5;
             uint256 houseAmount = (grossPayout * houseEdge) / 10000;
             payout = grossPayout - houseAmount;
-
-            (bool success, ) = payable(msg.sender).call{value: payout}("");
+            (bool success, ) = payable(game.player).call{value: payout}("");
             require(success, "Payout failed");
         }
 
-        emit GameCompleted(gameId, msg.sender, diceResult, won, payout);
+        emit GameCompleted(gameId, game.player, diceResult, won, payout);
     }
 
     /// @notice Get game details by ID
@@ -190,7 +218,7 @@ contract DiceGame is ReentrancyGuard, Ownable {
     /// @notice Fund contract balance
     function fundContract() external payable onlyOwner {
         require(msg.value > 0, "Must send Ether to fund contract");
-        emit contractBalanceUpdated(address(this).balance);
+        emit ContractBalanceUpdated(address(this).balance);
     }
 
     /// @notice Withdraw funds from contract
@@ -199,7 +227,7 @@ contract DiceGame is ReentrancyGuard, Ownable {
         require(_amount <= address(this).balance, "Insufficient balance");
         (bool success, ) = payable(owner()).call{value: _amount}("");
         require(success, "Withdrawal failed");
-        emit contractBalanceUpdated(address(this).balance);
+        emit ContractBalanceUpdated(address(this).balance);
     }
 
     /// @notice Emergency withdraw all funds
@@ -207,12 +235,12 @@ contract DiceGame is ReentrancyGuard, Ownable {
         uint256 balance = address(this).balance;
         (bool success, ) = payable(owner()).call{value: balance}("");
         require(success, "Emergency withdrawal failed");
-        emit contractBalanceUpdated(address(this).balance);
+        emit ContractBalanceUpdated(address(this).balance);
     }
 
     /// @notice Receive Ether to fund contract
     receive() external payable {
         require(msg.value > 0, "Must send Ether to fund contract");
-        emit contractBalanceUpdated(address(this).balance);
+        emit ContractBalanceUpdated(address(this).balance);
     }
 }

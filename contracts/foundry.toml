@@ -5,6 +5,3 @@ libs = ["lib"]
 
 rpc_url = "${SEPOLIA_RPC_URL}"
 etherscan_api_key = "${ETHERSCAN_API_KEY}"
-
-[profile.default.fork]
-url = "${FORK_URL}"
