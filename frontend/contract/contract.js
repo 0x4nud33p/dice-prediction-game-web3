@@ -1,10 +1,26 @@
 
 
-export const DICE_GAME_ADDRESS = "0x416370871B242A21c38Ad934aD72a312B61E6b63";
+export const DICE_GAME_ADDRESS = "0x4b56872C9530058C9a1475d650bF62758817192e";
 export const DICE_GAME_ABI = [
     {
         "type": "constructor",
-        "inputs": [],
+        "inputs": [
+            {
+                "name": "_subscriptionId",
+                "type": "uint64",
+                "internalType": "uint64"
+            },
+            {
+                "name": "_vrfCoordinator",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "_keyHash",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
         "stateMutability": "nonpayable"
     },
     {
@@ -347,6 +363,24 @@ export const DICE_GAME_ABI = [
     },
     {
         "type": "function",
+        "name": "rawFulfillRandomWords",
+        "inputs": [
+            {
+                "name": "requestId",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "randomWords",
+                "type": "uint256[]",
+                "internalType": "uint256[]"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
         "name": "renounceOwnership",
         "inputs": [],
         "outputs": [],
@@ -398,6 +432,25 @@ export const DICE_GAME_ABI = [
     },
     {
         "type": "function",
+        "name": "vrfRequestIdToGameId",
+        "inputs": [
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
         "name": "withdrawFunds",
         "inputs": [
             {
@@ -421,6 +474,19 @@ export const DICE_GAME_ABI = [
             },
             {
                 "name": "newMaxBet",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "ContractBalanceUpdated",
+        "inputs": [
+            {
+                "name": "newBalance",
                 "type": "uint256",
                 "indexed": false,
                 "internalType": "uint256"
@@ -530,16 +596,38 @@ export const DICE_GAME_ABI = [
     },
     {
         "type": "event",
-        "name": "contractBalanceUpdated",
+        "name": "RandomnessRequested",
         "inputs": [
             {
-                "name": "newBalance",
+                "name": "gameId",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "requestId",
                 "type": "uint256",
                 "indexed": false,
                 "internalType": "uint256"
             }
         ],
         "anonymous": false
+    },
+    {
+        "type": "error",
+        "name": "OnlyCoordinatorCanFulfill",
+        "inputs": [
+            {
+                "name": "have",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "want",
+                "type": "address",
+                "internalType": "address"
+            }
+        ]
     },
     {
         "type": "error",

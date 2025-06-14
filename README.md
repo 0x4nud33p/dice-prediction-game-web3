@@ -98,7 +98,7 @@ The DiceGame contract implements:
 ### Smart Contract Deployment
 ```bash
 cd contracts
-forge script script/DiceGame.s.sol --rpc-url <RPC_URL> --private-key <PRIVATE_KEY> --broadcast
+forge script script/DiceGame.s.sol --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY --broadcast 
 ```
 
 ### Frontend Deployment
